@@ -3,6 +3,7 @@ const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
 const app = express()
+const Person = require('./models/person')
 app.use(express.static('dist'))
 
 
@@ -38,27 +39,35 @@ morgan.token('req-body', (request) => {
   return JSON.stringify(request.body)});
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :req-body'))
 
-
-
 app.get('/', (request, response) =>{
     response.send('<h1>Hello World</h1>')
 })
 app.get('/info', (request, response)=>{
   const now = new Date()
-  response.send(`<p>Phonebook has info for ${persons.length} people</p><p>${now.toString()}`)
+  Person.find({}).then((persons)=>{
+    response.send(`<p>Phonebook has info for ${persons.length} people</p><p>${now.toString()}`)
+  })
 })
 
+
+
 app.get('/api/persons', (request, response)=>{
+  Person.find({}).then(persons =>{
     response.json(persons)
+  })
 })
+
+
 app.get('/api/persons/:id', (request, response)=>{
-  const id = request.params.id
-  const person = persons.find(p => p.id === id)
-  if (person){
-    response.json(person)
-  }else{
-    response.status(404).end()
-  }
+  Person.findById(request.params.id)
+    .then(persons =>{
+      response.json(persons)
+    })
+    .catch(error=>{
+      response.status(404).json({
+        error: `Could not find person: ${request.params.id}`
+    }).end()
+  })
 })
 
 app.post('/api/persons',(request, response)=>{
@@ -68,19 +77,19 @@ app.post('/api/persons',(request, response)=>{
       error: 'need both name and number' 
     })
   }
-  if (persons.find(person => person.name === body.name)){
-    return response.status(400).json({ 
-      error: 'name must be unique' 
+
+
+  Person.findOne({name: body.name}).then((result)=>{
+    if(result){
+      return response.status(400).json({
+        error: 'name must be unique'
+      })
+    }
+    const newPerson = new Person(body)
+    newPerson.save().then(()=>{
+      response.json(newPerson)
     })
-  }
-  const person = {
-    id: String(Math.floor(Math.random()*10000000)),
-    name: body.name,
-    number: body.number
-  }
-  console.log(person)
-  persons = persons.concat(person)
-  response.json(person)
+  })
 })
 
 app.delete('/api/persons/:id', (request, response)=>{
@@ -90,7 +99,7 @@ app.delete('/api/persons/:id', (request, response)=>{
 })
 
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, ()=>{
   currentTime = 
     console.log(`Server running on port ${PORT}`)

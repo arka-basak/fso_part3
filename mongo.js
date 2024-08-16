@@ -10,6 +10,8 @@ const password = process.argv[2]
 const url = `mongodb+srv://fullstack:${password}@cluster0.7bf42.mongodb.net/PhonebookApp?retryWrites=true&w=majority&appName=Cluster0`
 
 mongoose.set('strictQuery',false)
+
+
 mongoose.connect(url)
 
 const Person = mongoose.model('Person', {
